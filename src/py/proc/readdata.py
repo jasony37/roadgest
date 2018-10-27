@@ -1,10 +1,14 @@
+import os
 import pandas as pd
 import warnings
 
 
-class CabListReader(object):
-    def __init__(self, fname):
-        self._fname = fname
+class CabReader(object):
+    def __init__(self, dirname):
+        self._dirname = dirname
+        self._fname = os.path.join(dirname, "_cabs.txt")
+        self.cab_list = None
+        self.cab_traces = None
 
     def _tag_value(self, line, tag_name):
         try:
@@ -25,10 +29,28 @@ class CabListReader(object):
         else:
             warnings.warn("Line does not look like a tag. Ignored!")
 
-    def read_data(self):
+    def read_cablist(self):
         cab_list = []
         with open(self._fname, 'r') as fin:
             for line in fin:
                 cab_data = self._proc_line(line)
                 if cab_data is not None:
                     cab_list.append(cab_data)
+        self.cab_list = pd.DataFrame(cab_list)
+
+    def cab_id_to_fname(self, cab_id):
+        return os.path.join(self._dirname, "new_{}.txt".format(cab_id))
+
+    def read_cabtraces(self):
+        assert(self.cab_list is not None)
+        id_col = self.cab_list['id'].apply(self.cab_id_to_fname)
+        flist = self.cab_list.assign(fname=id_col)
+        cab_data_list = []
+        for cabf in flist.itertuples():
+            cab_data = pd.read_csv(cabf.fname, delim_whitespace=True,
+                                   names=['lat', 'long', 'occupancy', 'time'])
+            cab_data_list.append(cab_data.assign(cab_id=cabf.id))
+        self.cab_traces = pd.concat(cab_data_list, ignore_index=True)
+
+    def cabtraces_from_save(self, fname):
+        self.cab_traces = pd.read_pickle(fname)
