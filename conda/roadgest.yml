@@ -1,47 +1,46 @@
 name: roadgest
-channels:
-- conda-forge
-- defaults
 dependencies:
-- basemap=1.1.0=py36_2
-- basemap-data-hires=1.2.0=0
-- freetype=2.8.1=vc14_0
-- geos=3.5.1=vc14_1
-- icu=58.2=vc14_0
-- jpeg=9b=vc14_2
-- libpng=1.6.34=vc14_0
-- matplotlib=2.2.2=py36_1
-- openssl=1.0.2o=vc14_0
-- proj4=5.0.1=vc14_0
-- pyqt=5.6.0=py36h764d66f_7
-- python=3.6.6=he025d50_0
-- qt=5.6.2=vc14_1
-- sip=4.18.1=py36h6538335_0
-- sqlite=3.22.0=vc14_0
-- vc=14=0
-- zlib=1.2.11=vc14_0
 - blas=1.0=mkl
-- numpy
-- pandas=0.23.4=py36h830ac7b_0
-- pip=10.0.1=py36_0
-- pyparsing=2.2.2
+- conda-forge::basemap=1.1.0=py36_2
+- conda-forge::basemap-data-hires=1.2.0=0
+- conda-forge::ca-certificates=2018.10.15=ha4d7672_0
+- conda-forge::certifi=2018.10.15=py36_1000
+- conda-forge::freetype=2.8.1=vc14_0
+- conda-forge::geos=3.5.1=vc14_1
+- conda-forge::icu=58.2=vc14_0
+- conda-forge::jpeg=9b=vc14_2
+- conda-forge::kiwisolver=1.0.1=py36he980bc4_1002
+- conda-forge::libflang=5.0.0=vc14_20180208
+- conda-forge::libpng=1.6.34=vc14_0
+- conda-forge::llvm-meta=5.0.0=0
+- conda-forge::openblas=0.2.20=vc14_8
+- conda-forge::openmp=5.0.0=vc14_1
+- conda-forge::openssl=1.0.2o=vc14_0
+- conda-forge::pandas=0.23.4=py36h830ac7b_0
+- conda-forge::pip=10.0.1=py36_0
+- conda-forge::proj4=5.0.1=vc14_0
+- conda-forge::pyqt=5.6.0=py36h764d66f_7
+- conda-forge::pyshp=1.2.12=py_0
+- conda-forge::python=3.6.6=he025d50_0
+- conda-forge::qt=5.6.2=vc14_1
+- conda-forge::setuptools=40.4.3=py36_0
+- conda-forge::sip=4.18.1=py36h6538335_0
+- conda-forge::six=1.11.0=py36_1
+- conda-forge::sqlite=3.22.0=vc14_0
+- conda-forge::tornado=5.1.1=py36hfa6e2cd_0
+- conda-forge::vc=14=0
+- conda-forge::vs2015_runtime=14.0.25420=0
+- conda-forge::wheel=0.32.2=py36_0
+- conda-forge::wincertstore=0.2=py36_1002
+- conda-forge::zlib=1.2.11=vc14_0
+- cycler=0.10.0=py36_0
+- matplotlib=2.0.2=np113py36_0
+- mkl=2017.0.3=0
+- numpy=1.13.1=py36_0
+- pyparsing=2.2.0=py36_0
 - pyproj=1.9.5.1=py36_0
-- pyshp=1.2.12
-- python-dateutil=2.7.3
-- pytz=2018.5
-- setuptools=40.4.3=py36_0
-- six=1.11.0=py36_1
-- tornado=5.1.1=py36hfa6e2cd_0
-- vs2015_runtime
-- wheel=0.32.2=py36_0
-- wincertstore=0.2
-- pip:
-  - chardet==3.0.4
-  - gmplot==1.2.0
-  - idna==2.7
-  - mkl-fft==1.0.6
-  - mkl-random==1.0.1
-  - requests==2.19.1
-  - urllib3==1.23
-prefix: C:\Users\Jason\Anaconda2\envs\roadgest
+- python-dateutil=2.6.1=py36_0
+- pytz=2017.2=py36_0
+- tk=8.5.18=vc14_0
+prefix: C:\Users\Sleepy\Anaconda2\envs\roadgest
 
