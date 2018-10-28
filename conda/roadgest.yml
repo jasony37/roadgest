@@ -1,0 +1,57 @@
+name: roadgest
+channels:
+- conda-forge
+- defaults
+dependencies:
+- basemap=1.1.0=py36_2
+- basemap-data-hires=1.2.0=0
+- freetype=2.8.1=vc14_0
+- geos=3.5.1=vc14_1
+- icu=58.2=vc14_0
+- jpeg=9b=vc14_2
+- libpng=1.6.34=vc14_0
+- matplotlib=2.2.2=py36_1
+- openssl=1.0.2o=vc14_0
+- proj4=5.0.1=vc14_0
+- pyqt=5.6.0=py36h764d66f_7
+- python=3.6.6=he025d50_0
+- qt=5.6.2=vc14_1
+- sip=4.18.1=py36h6538335_0
+- sqlite=3.22.0=vc14_0
+- vc=14=0
+- zlib=1.2.11=vc14_0
+- blas=1.0=mkl
+- ca-certificates=2018.03.07=0
+- certifi=2018.10.15=py36_0
+- cycler=0.10.0=py36h009560c_0
+- icc_rt=2017.0.4=h97af966_0
+- intel-openmp=2019.0=118
+- kiwisolver=1.0.1=py36h6538335_0
+- mkl=2019.0=118
+- mkl_fft=1.0.6=py36hdbbee80_0
+- mkl_random=1.0.1=py36h77b88f5_1
+- numpy=1.15.3=py36ha559c80_0
+- numpy-base=1.15.3=py36h8128ebf_0
+- pandas=0.23.4=py36h830ac7b_0
+- pip=10.0.1=py36_0
+- pyparsing=2.2.2=py36_0
+- pyproj=1.9.5.1=py36_0
+- pyshp=1.2.12=py36_0
+- python-dateutil=2.7.3=py36_0
+- pytz=2018.5=py36_0
+- setuptools=40.4.3=py36_0
+- six=1.11.0=py36_1
+- tornado=5.1.1=py36hfa6e2cd_0
+- vs2015_runtime=14.15.26706=h3a45250_0
+- wheel=0.32.2=py36_0
+- wincertstore=0.2=py36h7fe50ca_0
+- pip:
+  - chardet==3.0.4
+  - gmplot==1.2.0
+  - idna==2.7
+  - mkl-fft==1.0.6
+  - mkl-random==1.0.1
+  - requests==2.19.1
+  - urllib3==1.23
+prefix: C:\Users\Jason\Anaconda2\envs\roadgest
+
