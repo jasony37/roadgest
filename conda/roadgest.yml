@@ -1,11 +1,11 @@
 name: roadgest
 dependencies:
 - blas=1.0=mkl
+- bzip2=1.0.6=vc14_3
 - conda-forge::basemap=1.1.0=py36_2
 - conda-forge::basemap-data-hires=1.2.0=0
 - conda-forge::ca-certificates=2018.10.15=ha4d7672_0
 - conda-forge::certifi=2018.10.15=py36_1000
-- conda-forge::freetype=2.8.1=vc14_0
 - conda-forge::geos=3.5.1=vc14_1
 - conda-forge::icu=58.2=vc14_0
 - conda-forge::jpeg=9b=vc14_2
@@ -17,7 +17,6 @@ dependencies:
 - conda-forge::openmp=5.0.0=vc14_1
 - conda-forge::openssl=1.0.2o=vc14_0
 - conda-forge::pandas=0.23.4=py36h830ac7b_0
-- conda-forge::pip=10.0.1=py36_0
 - conda-forge::proj4=5.0.1=vc14_0
 - conda-forge::pyqt=5.6.0=py36h764d66f_7
 - conda-forge::pyshp=1.2.12=py_0
@@ -34,13 +33,20 @@ dependencies:
 - conda-forge::wincertstore=0.2=py36_1002
 - conda-forge::zlib=1.2.11=vc14_0
 - cycler=0.10.0=py36_0
+- cytoolz=0.8.2=py36_0
+- freetype=2.5.5=vc14_2
+- libtiff=4.0.6=vc14_3
 - matplotlib=2.0.2=np113py36_0
 - mkl=2017.0.3=0
 - numpy=1.13.1=py36_0
+- olefile=0.44=py36_0
+- pillow=4.2.1=py36_0
+- pip=9.0.1=py36_1
 - pyparsing=2.2.0=py36_0
 - pyproj=1.9.5.1=py36_0
 - python-dateutil=2.6.1=py36_0
 - pytz=2017.2=py36_0
 - tk=8.5.18=vc14_0
+- toolz=0.8.2=py36_0
 prefix: C:\Users\Sleepy\Anaconda2\envs\roadgest
 
