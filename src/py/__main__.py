@@ -20,7 +20,8 @@ def main():
     else:
         cab_reader.read_cabtraces()
         cab_reader.cab_traces.to_pickle(cab_traces_file)
-    vis.core.plot_cabs_in_time(cab_reader.cab_traces, 1212991838, 1212991900)
+    #vis.core.plot_cabs_in_time(cab_reader.cab_traces, 1212991838, 1212995438)
+    vis.core.plot_timestamps(cab_reader.cab_traces, 1212991838, 1212995438)
 
 
 if __name__ == "__main__":
