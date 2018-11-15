@@ -3,12 +3,19 @@ import pandas as pd
 import warnings
 
 
-class CabReader(object):
+class CabData(object):
     def __init__(self, dirname):
         self._dirname = dirname
         self._fname = os.path.join(dirname, "_cabs.txt")
         self.cab_list = None
         self.cab_traces = None
+        cab_traces_file = os.path.join(dirname, "cab_traces.pickle")
+        self.read_cablist()
+        if os.path.isfile(cab_traces_file):
+            self.cabtraces_from_save(cab_traces_file)
+        else:
+            self.read_cabtraces()
+            self.cab_traces.to_pickle(cab_traces_file)
 
     def _tag_value(self, line, tag_name):
         try:
@@ -54,3 +61,8 @@ class CabReader(object):
 
     def cabtraces_from_save(self, fname):
         self.cab_traces = pd.read_pickle(fname)
+
+
+class RoadSection(object):
+    def __init__(self, fname):
+        self.section = pd.read_csv(fname)

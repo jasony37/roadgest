@@ -12,16 +12,9 @@ def args_setup():
 
 def main():
     args = args_setup()
-    cab_traces_file = os.path.join(args.datadir, "cab_traces.pickle")
-    cab_reader = proc.readdata.CabReader(args.datadir)
-    cab_reader.read_cablist()
-    if os.path.isfile(cab_traces_file):
-        cab_reader.cabtraces_from_save(cab_traces_file)
-    else:
-        cab_reader.read_cabtraces()
-        cab_reader.cab_traces.to_pickle(cab_traces_file)
-    #vis.core.plot_cabs_in_time(cab_reader.cab_traces, 1212991838, 1212995438)
-    vis.core.plot_timestamps(cab_reader.cab_traces, 1212991838, 1212995438)
+    cab_data = proc.readdata.CabData(args.datadir)
+    vis.core.plot_cabs_in_time(cab_data.cab_traces, 1212991838, 1212995438)
+    #vis.core.plot_timestamps(cab_data.cab_traces, 1212991838, 1212995438)
 
 
 if __name__ == "__main__":
