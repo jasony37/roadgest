@@ -1,6 +1,8 @@
 import os
+import numpy as np
 import pandas as pd
 import warnings
+from proc import gps
 
 
 class CabData(object):
@@ -62,7 +64,18 @@ class CabData(object):
     def cabtraces_from_save(self, fname):
         self.cab_traces = pd.read_pickle(fname)
 
+    def calc_xy(self, lat_center, long_center):
+        x = gps.long_to_x(self.cab_traces['long'], lat_center, long_center)
+        y = gps.lat_to_y(self.cab_traces['lat'], lat_center)
+        self.cab_traces.assign(x=x, y=y)
+
+    def check_on_section(self, road_section):
+        self.cab_traces.sort_values(by=['cab_id', 'time'], inplace=True)
+        self.cab_traces.reset_index(drop=True, inplace=True)
+        pass
+
 
 class RoadSection(object):
     def __init__(self, fname):
         self.section = pd.read_csv(fname)
+        self.center = np.mean(self.section[['lat', 'long']])
