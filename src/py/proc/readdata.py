@@ -60,18 +60,33 @@ class CabData(object):
                                    names=['lat', 'long', 'occupancy', 'time'])
             cab_data_list.append(cab_data.assign(cab_id=cabf.id))
         self.cab_traces = pd.concat(cab_data_list, ignore_index=True)
+        self.cab_traces.sort_values(by=['cab_id', 'time'], inplace=True)
+        self.cab_traces.reset_index(drop=True, inplace=True)
 
     def cabtraces_from_save(self, fname):
         self.cab_traces = pd.read_pickle(fname)
 
     def calc_xy(self, lat_center, long_center):
-        x = gps.long_to_x(self.cab_traces['long'], lat_center, long_center)
-        y = gps.lat_to_y(self.cab_traces['lat'], lat_center)
-        self.cab_traces.assign(x=x, y=y)
+        self.cab_traces['x'] = gps.long_to_x(self.cab_traces['long'],
+                                             lat_center, long_center)
+        self.cab_traces['y'] = gps.lat_to_y(self.cab_traces['lat'], lat_center)
 
     def check_on_section(self, road_section):
-        self.cab_traces.sort_values(by=['cab_id', 'time'], inplace=True)
-        self.cab_traces.reset_index(drop=True, inplace=True)
+        """
+        For each cab in self.cab_traces, data must previously be sorted by
+        increasing time
+        :param road_section:
+        :return:
+        """
+        segments = zip(road_section.section['x'], road_section.section['y'])
+        segments = pd.Series(list(segments))
+        segments = pd.DataFrame({'start': segments, 'end': segments.shift(-1)})
+        segments = segments[:-1]
+        seg_assn = self.cab_traces.apply(gps.assign_segment,
+                                         axis=1, args=[segments, 20.0])
+
+        self.cab_traces['segment'] = seg_assn
+        # self.cab_traces.groupby('cab_id').first()
         pass
 
 
@@ -79,3 +94,14 @@ class RoadSection(object):
     def __init__(self, fname):
         self.section = pd.read_csv(fname)
         self.center = np.mean(self.section[['lat', 'long']])
+        self.calc_xy()
+        self.approx_len = self.calc_approx_len()
+
+    def calc_xy(self):
+        self.section['x'] = gps.long_to_x(self.section['long'], *self.center)
+        self.section['y'] = gps.lat_to_y(self.section['lat'],
+                                         self.center['lat'])
+
+    def calc_approx_len(self):
+        xy = self.section[['x', 'y']]
+        return np.linalg.norm(xy.iloc[0] - xy.iloc[-1])

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 earth_rad = 6.378137e6
 
@@ -38,3 +39,16 @@ def p2l_dist(point, linept1, linept2):
         pt_proj = linept1 + pt_proj_dist * line_vec
         return np.linalg.norm(pt_proj - point)
 
+
+def assign_segment(loc, segments, thresh):
+    """
+    :param loc: must contain entries 'x' and 'y' of location of interest
+    :param segments: DataFrame with columns [start, stop], each containing
+    tuples (x, y)
+    :param thresh: distance to segment threshold
+    :return:
+    """
+    loc_xy = (loc['x'], loc['y'])
+    dists = segments.apply(lambda row: p2l_dist(loc_xy, row['start'], row['end']), axis=1)
+    min_idx = dists.idxmin()
+    return min_idx if dists[min_idx] <= thresh else -1
