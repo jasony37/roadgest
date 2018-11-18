@@ -29,5 +29,6 @@ def plot_cabs_in_time(cab_traces, time1, time2):
                           zoom=14)
     mapimg = geotiler.render_map(gt_map)
     plt.imshow(mapimg, extent=[0, extent_x, 0, extent_y])
-    plt.scatter(x, y, s=5)
+    plt.scatter(x[rel_traces['segment'] >= 0], y[rel_traces['segment'] >= 0], color='r', s=5)
+    plt.scatter(x[rel_traces['segment'] < 0], y[rel_traces['segment'] < 0], color='b', s=5)
     plt.show()

@@ -71,20 +71,22 @@ class CabData(object):
                                              lat_center, long_center)
         self.cab_traces['y'] = gps.lat_to_y(self.cab_traces['lat'], lat_center)
 
-    def check_on_section(self, road_section):
+    def check_on_section(self, road_section, dist_thresh, time_lims=None):
         """
         For each cab in self.cab_traces, data must previously be sorted by
         increasing time
         :param road_section:
+        :param dist_thresh
         :return:
         """
-        segments = zip(road_section.section['x'], road_section.section['y'])
-        segments = pd.Series(list(segments))
-        segments = pd.DataFrame({'start': segments, 'end': segments.shift(-1)})
-        segments = segments[:-1]
-        seg_assn = self.cab_traces.apply(gps.assign_segment,
-                                         axis=1, args=[segments, 20.0])
-
+        cab_traces = self.cab_traces
+        if time_lims is not None:
+            rel_rows = cab_traces['time'].between(time_lims[0], time_lims[1])
+            cab_traces = cab_traces[rel_rows]
+        seg_assn = gps.assign_segments(cab_traces, road_section, dist_thresh)
+        if time_lims is not None:
+            seg_assn = pd.DataFrame({'segment': seg_assn})
+            seg_assn.set_index(self.cab_traces.index[rel_rows], inplace=True)
         self.cab_traces['segment'] = seg_assn
         # self.cab_traces.groupby('cab_id').first()
         pass
@@ -95,6 +97,7 @@ class RoadSection(object):
         self.section = pd.read_csv(fname)
         self.center = np.mean(self.section[['lat', 'long']])
         self.calc_xy()
+        self.segments = self.calc_segments()
         self.approx_len = self.calc_approx_len()
 
     def calc_xy(self):
@@ -105,3 +108,46 @@ class RoadSection(object):
     def calc_approx_len(self):
         xy = self.section[['x', 'y']]
         return np.linalg.norm(xy.iloc[0] - xy.iloc[-1])
+
+    def calc_segments(self):
+        segments = self.section[['x', 'y']]
+        ends = segments.shift(-1)
+        segments.columns = ['start_x', 'start_y']
+        segments.loc[:, 'end_x'] = ends['x']
+        segments.loc[:, 'end_y'] = ends['y']
+        segments = segments[:-1]
+        return segments
+
+    def min_pt_dist_approx(self, points):
+        sec_start = self.section.loc[0, ['x', 'y']]
+        sec_start = sec_start.squeeze()  # turn into Series
+        pt_to_start_dists = np.square(points - sec_start)
+        pt_to_start_dists = np.sqrt(pt_to_start_dists.sum(axis=1))
+        min_dists = pt_to_start_dists - self.approx_len
+        return min_dists.clip(lower=0.0)
+
+    def point_segment_dists(self, point, filt=None):
+        dists = pd.Series([0] * len(self.segments['start_x'].index))
+        starts = self.segments[['start_x', 'start_y']]
+        ends = self.segments[['end_x', 'end_y']]
+        starts.columns = ends.columns = ['x', 'y']
+        line_vec = ends - starts
+        len_sqr = np.sum(np.square(line_vec), 1)
+        if filt is None:
+            point = point.squeeze()
+            filt = len_sqr == 0.0
+            if np.any(filt):
+                dists[filt] = gps.dist_sqr(point, starts[filt])
+            filt = np.invert(filt)
+            if np.any(filt):
+                dists[filt] = self.point_segment_dists(point, filt)
+            return dists.squeeze()
+        else:
+            point = point.squeeze()
+            starts = starts[filt]
+            starts_to_point = point - starts
+            pt_proj_dists = starts_to_point.multiply(line_vec.div(len_sqr, axis=0), axis=0)
+            pt_proj_dists = pt_proj_dists.sum(1)
+            pt_proj_dists.clip(0.0, 1.0, inplace=True)
+            pt_projs = starts + line_vec.multiply(pt_proj_dists, axis=0)
+            return np.sqrt(gps.dist_sqr(point, pt_projs))

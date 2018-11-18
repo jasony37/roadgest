@@ -15,40 +15,29 @@ def lat_to_y(lat, lat_center):
 
 
 def dist_sqr(p1, p2):
-    vec = np.subtract(p2, p1)
-    return np.sum(np.square(vec))
+    vec = p2 - p1
+    return np.sum(np.square(vec), 1)
 
 
-def p2l_dist(point, linept1, linept2):
+def assign_segment(loc_xy, road_section, thresh):
+    dists = road_section.point_segment_dists(loc_xy).squeeze()
+    idx_min = dists.idxmin()
+    return idx_min if dists.loc[idx_min] <= thresh else -1
+
+
+def assign_segments(cab_traces, road_section, thresh):
     """
-    Distance of point to line segment
-    If point's project lies outside the segment, the distance is to the
-    closest endpoint
-    :param point: [x, y]
-    :param linept1: [x, y]
-    :param linept2: [x, y]
-    :return:
-    """
-    line_vec = np.subtract(linept2, linept1)
-    len_sqr = np.sum(np.square(line_vec))
-    if len_sqr == 0.0:
-        return dist_sqr(point, linept1)
-    else:
-        pt_proj_dist = np.dot(np.subtract(point, linept1), line_vec / len_sqr)
-        pt_proj_dist = np.min([np.max([0.0, pt_proj_dist]), 1.0])
-        pt_proj = linept1 + pt_proj_dist * line_vec
-        return np.linalg.norm(pt_proj - point)
-
-
-def assign_segment(loc, segments, thresh):
-    """
-    :param loc: must contain entries 'x' and 'y' of location of interest
-    :param segments: DataFrame with columns [start, stop], each containing
-    tuples (x, y)
+    :param cab_traces: must contain entries 'x' and 'y' of location of interest
+    :param road_section: RoadSection instance
     :param thresh: distance to segment threshold
-    :return:
+    :return: idx of segment that should be assigned to loc,
+    or -1 if loc's distance to the section is outside thresh
     """
-    loc_xy = (loc['x'], loc['y'])
-    dists = segments.apply(lambda row: p2l_dist(loc_xy, row['start'], row['end']), axis=1)
-    min_idx = dists.idxmin()
-    return min_idx if dists[min_idx] <= thresh else -1
+    assignments = pd.Series([-1] * len(cab_traces.index), index=cab_traces.index)
+    loc_xy = cab_traces[['x', 'y']]
+    need_calcs = road_section.min_pt_dist_approx(loc_xy) <= thresh
+    if np.any(need_calcs):
+        assignments[need_calcs] = loc_xy[need_calcs].apply(assign_segment,
+                                                           axis=1,
+                                                           args=(road_section, thresh))
+    return assignments
