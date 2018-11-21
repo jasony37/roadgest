@@ -71,12 +71,13 @@ class CabData(object):
                                              lat_center, long_center)
         self.cab_traces['y'] = gps.lat_to_y(self.cab_traces['lat'], lat_center)
 
-    def check_on_section(self, road_section, dist_thresh, time_lims=None):
+    def set_road_segments(self, road_section, dist_thresh, time_lims=None):
         """
         For each cab in self.cab_traces, data must previously be sorted by
         increasing time
-        :param road_section:
-        :param dist_thresh
+        :param road_section: RoadSection instance
+        :param dist_thresh: threshold of distance to road segment, in meters
+        :param time_lims: tuple (start, end) between which to assign segments
         :return:
         """
         cab_traces = self.cab_traces
@@ -98,6 +99,7 @@ class RoadSection(object):
         self.center = np.mean(self.section[['lat', 'long']])
         self.calc_xy()
         self.segments = self.calc_segments()
+        self.calc_segment_angles()
         self.approx_len = self.calc_approx_len()
 
     def calc_xy(self):
@@ -116,6 +118,10 @@ class RoadSection(object):
         segments.columns = [['start', 'start', 'end', 'end'], xy_labels + xy_labels]
         segments = segments[:-1]
         return segments
+
+    def calc_segment_angles(self):
+        vecs = self.segments['end'] - self.segments['start']
+        self.segments['angle'] = np.arctan2(vecs['y'], vecs['x'])
 
     def min_pt_dist_approx(self, points):
         sec_start = self.section.loc[0, ['x', 'y']]
