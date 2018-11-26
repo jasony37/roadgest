@@ -71,6 +71,18 @@ class CabData(object):
                                              lat_center, long_center)
         self.cab_traces['y'] = gps.lat_to_y(self.cab_traces['lat'], lat_center)
 
+    def calc_deltas(self, dtime_max=90):
+        """
+        :param dtime_max: Maximum delta time for valid velocity, in seconds
+        :return:
+        """
+        cab_traces_grouped = self.cab_traces.groupby('cab_id')[['time', 'x', 'y']]
+        delta = cab_traces_grouped.shift(0) - cab_traces_grouped.shift(1)
+        delta.loc[delta['time'] > dtime_max, 'time'] = np.nan
+        self.cab_traces['dir'] = np.arctan2(delta['y'], delta['x'])
+        self.cab_traces['vx'] = delta['x'] / delta['time']
+        self.cab_traces['vy'] = delta['y'] / delta['time']
+
     def set_road_segments(self, road_section, dist_thresh, time_lims=None):
         """
         For each cab in self.cab_traces, data must previously be sorted by

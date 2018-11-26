@@ -35,9 +35,6 @@ def assign_segments(cab_traces, road_section, thresh):
     """
     assignments = pd.Series([-1] * len(cab_traces.index), index=cab_traces.index)
     loc_xy = cab_traces[['x', 'y']]
-    # need to limit this to group!
-    cab_traces_grouped = cab_traces.groupby('cab_id')
-    mov_dirs = loc_xy.shift(-1)[:-1] - loc_xy[:-1]
     need_calcs = road_section.min_pt_dist_approx(loc_xy) <= thresh
     if np.any(need_calcs):
         assignments[need_calcs] = loc_xy[need_calcs].apply(assign_segment,
