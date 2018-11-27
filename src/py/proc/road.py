@@ -3,7 +3,6 @@ import pandas as pd
 
 from proc import gps
 
-
 class RoadSection(object):
     def __init__(self, fname):
         self.section = pd.read_csv(fname)
@@ -31,6 +30,7 @@ class RoadSection(object):
 
     def _process_data(self):
         self.center = np.mean(self.section[['lat', 'long']])
+        self.extents = gps.Extents(self.section[['lat', 'long']], 0.0005, 0.0005)
         self._calc_xy()
         self._calc_segments()
         self._calc_segment_angles()

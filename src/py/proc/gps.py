@@ -4,6 +4,21 @@ import pandas as pd
 earth_rad = 6.378137e6 # radius of Earth in meters
 
 
+class Extents(object):
+    def __init__(self, coords, border_lat, border_long):
+        mins = coords.min() - [border_lat, border_long]
+        maxes = coords.max() + [border_lat, border_long]
+        self.min = mins
+        self.max = maxes
+
+    def to_tuple(self):
+        min = self.min
+        max = self.max
+        coords = [min['long'], min['lat'], max['long'], max['lat']]
+        coords = [float(x) for x in coords]
+        return tuple(coords)
+
+
 def long_to_x(long, lat_center, long_center):
     # see https://stackoverflow.com/questions/16266809/convert-from-latitude-longitude-to-x-y
     lat_center_rad = np.radians(lat_center)
