@@ -1,5 +1,4 @@
 from matplotlib import pyplot as plt
-import numpy as np
 from mpl_toolkits.basemap import Basemap
 import geotiler
 
@@ -16,7 +15,6 @@ def plot_timestamps(cab_traces, t1, t2):
 def plot_cabs_in_time(cab_traces, times, extents):
     rel_traces = cab_traces['time'].between(times[0], times[1], inclusive=True)
     rel_traces = cab_traces[rel_traces]
-    extent = (-122.6, 37.7, -122.28, 37.8)
 
     bm = Basemap(llcrnrlon=extents.min['long'], llcrnrlat=extents.min['lat'],
                  urcrnrlon=extents.max['long'], urcrnrlat=extents.max['lat'],
