@@ -1,0 +1,75 @@
+import numpy as np
+import pandas as pd
+
+from proc import gps
+
+
+class RoadSection(object):
+    def __init__(self, fname):
+        self.section = pd.read_csv(fname)
+        self._process_data()
+
+    def _calc_xy(self):
+        self.section['x'] = gps.long_to_x(self.section['long'], *self.center)
+        self.section['y'] = gps.lat_to_y(self.section['lat'], self.center['lat'])
+
+    def _calc_approx_len(self):
+        xy = self.section[['x', 'y']]
+        return np.linalg.norm(xy.iloc[0] - xy.iloc[-1])
+
+    def _calc_segments(self):
+        segments = self.section[['x', 'y']]
+        ends = segments.shift(-1)
+        segments = segments.assign(x2=ends['x'], y2=ends['y'])
+        segments.columns = [['start', 'start', 'end', 'end'], ['x', 'y', 'x', 'y']]
+        segments = segments[:-1]
+        self.segments = segments
+
+    def _calc_segment_angles(self):
+        vecs = self.segments['end'] - self.segments['start']
+        self.segments['angle'] = np.arctan2(vecs['y'], vecs['x'])
+
+    def _process_data(self):
+        self.center = np.mean(self.section[['lat', 'long']])
+        self._calc_xy()
+        self._calc_segments()
+        self._calc_segment_angles()
+        self.approx_len = self._calc_approx_len()
+
+    def min_pt_dist_approx(self, points):
+        sec_start = self.section.loc[0, ['x', 'y']]
+        sec_start = sec_start.squeeze()  # turn into Series
+        pt_to_start_dists = np.square(points - sec_start)
+        pt_to_start_dists = np.sqrt(pt_to_start_dists.sum(axis=1))
+        min_dists = pt_to_start_dists - self.approx_len
+        return min_dists.clip(lower=0.0)
+
+    def point_segment_dists(self, point, filt=None):
+        """
+        point_segment_dists
+        Find point-to-line-segment distance to each segment in the road section
+        :param point: Container that has x, y of point
+        :param filt: Boolean array: only find distances of segments where
+        its corresponding value in filt is True
+        :return: Pandas Series of distances between the point and each segment
+        """
+        dists = pd.Series([0] * len(self.segments['start'].index))
+        line_vec = self.segments['end'] - self.segments['start']
+        len_sqr = np.sum(np.square(line_vec), 1)
+        if filt is None:
+            point = point.squeeze()
+            filt = len_sqr == 0.0
+            if np.any(filt):
+                dists[filt] = gps.dist_sqr(point, self.segments['start'][filt])
+            filt = np.invert(filt)
+            if np.any(filt):
+                dists[filt] = self.point_segment_dists(point, filt)
+            return dists.squeeze()
+        else:
+            starts = self.segments['start'][filt]
+            starts_to_point = point - starts
+            pt_proj_dists = starts_to_point.multiply(line_vec.div(len_sqr, axis=0), axis=0)
+            pt_proj_dists = pt_proj_dists.sum(1)
+            pt_proj_dists.clip(0.0, 1.0, inplace=True)
+            pt_projs = starts + line_vec.multiply(pt_proj_dists, axis=0)
+            return np.sqrt(gps.dist_sqr(point, pt_projs))

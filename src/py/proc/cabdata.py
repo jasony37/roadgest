@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import warnings
+
 from proc import gps
 
 
@@ -83,92 +84,25 @@ class CabData(object):
         self.cab_traces['vx'] = delta['x'] / delta['time']
         self.cab_traces['vy'] = delta['y'] / delta['time']
 
-    def set_road_segments(self, road_section, dist_thresh, time_lims=None):
+    def assign_road_segments(self, road_section, dist_thresh, angle_thresh, time_lims=None):
         """
         For each cab in self.cab_traces, data must previously be sorted by
         increasing time
         :param road_section: RoadSection instance
         :param dist_thresh: threshold of distance to road segment, in meters
+        :param angle_thresh: threshold of gps direction to road angle, in radians
         :param time_lims: tuple (start, end) between which to assign segments
         :return:
         """
         cab_traces = self.cab_traces
         if time_lims is not None:
             rel_rows = cab_traces['time'].between(time_lims[0], time_lims[1])
-            cab_traces = cab_traces[rel_rows]
-        seg_assn = gps.assign_segments(cab_traces, road_section, dist_thresh)
-        if time_lims is not None:
-            seg_assn = pd.DataFrame({'segment': seg_assn})
-            seg_assn.set_index(self.cab_traces.index[rel_rows], inplace=True)
+        else:
+            rel_rows = cab_traces['time']
+        cab_traces = cab_traces[rel_rows]
+        seg_assn = gps.assign_segments(cab_traces, road_section, dist_thresh, angle_thresh)
+        seg_assn = pd.DataFrame({'segment': seg_assn})
+        seg_assn.set_index(self.cab_traces.index[rel_rows], inplace=True)
         self.cab_traces['segment'] = seg_assn
         # self.cab_traces.groupby('cab_id').first()
         pass
-
-
-class RoadSection(object):
-    def __init__(self, fname):
-        self.section = pd.read_csv(fname)
-        self.center = np.mean(self.section[['lat', 'long']])
-        self.calc_xy()
-        self.segments = self.calc_segments()
-        self.calc_segment_angles()
-        self.approx_len = self.calc_approx_len()
-
-    def calc_xy(self):
-        self.section['x'] = gps.long_to_x(self.section['long'], *self.center)
-        self.section['y'] = gps.lat_to_y(self.section['lat'], self.center['lat'])
-
-    def calc_approx_len(self):
-        xy = self.section[['x', 'y']]
-        return np.linalg.norm(xy.iloc[0] - xy.iloc[-1])
-
-    def calc_segments(self):
-        xy_labels = ['x', 'y']
-        segments = self.section[xy_labels]
-        ends = segments.shift(-1)
-        segments = segments.assign(x2=ends['x'], y2=ends['y'])
-        segments.columns = [['start', 'start', 'end', 'end'], xy_labels + xy_labels]
-        segments = segments[:-1]
-        return segments
-
-    def calc_segment_angles(self):
-        vecs = self.segments['end'] - self.segments['start']
-        self.segments['angle'] = np.arctan2(vecs['y'], vecs['x'])
-
-    def min_pt_dist_approx(self, points):
-        sec_start = self.section.loc[0, ['x', 'y']]
-        sec_start = sec_start.squeeze()  # turn into Series
-        pt_to_start_dists = np.square(points - sec_start)
-        pt_to_start_dists = np.sqrt(pt_to_start_dists.sum(axis=1))
-        min_dists = pt_to_start_dists - self.approx_len
-        return min_dists.clip(lower=0.0)
-
-    def point_segment_dists(self, point, filt=None):
-        """
-        point_segment_dists
-        Find point-to-line-segment distance to each segment in the road section
-        :param point: Container that has x, y of point
-        :param filt: Boolean array: only find distances of segments where
-        its corresponding value in filt is True
-        :return: Pandas Series of distances between the point and each segment
-        """
-        dists = pd.Series([0] * len(self.segments['start'].index))
-        line_vec = self.segments['end'] - self.segments['start']
-        len_sqr = np.sum(np.square(line_vec), 1)
-        if filt is None:
-            point = point.squeeze()
-            filt = len_sqr == 0.0
-            if np.any(filt):
-                dists[filt] = gps.dist_sqr(point, self.segments['start'][filt])
-            filt = np.invert(filt)
-            if np.any(filt):
-                dists[filt] = self.point_segment_dists(point, filt)
-            return dists.squeeze()
-        else:
-            starts = self.segments['start'][filt]
-            starts_to_point = point - starts
-            pt_proj_dists = starts_to_point.multiply(line_vec.div(len_sqr, axis=0), axis=0)
-            pt_proj_dists = pt_proj_dists.sum(1)
-            pt_proj_dists.clip(0.0, 1.0, inplace=True)
-            pt_projs = starts + line_vec.multiply(pt_proj_dists, axis=0)
-            return np.sqrt(gps.dist_sqr(point, pt_projs))
