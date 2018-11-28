@@ -24,16 +24,17 @@ class RoadSection(object):
         segments = segments[:-1]
         self.segments = segments
 
-    def _calc_segment_angles(self):
+    def _calc_segment_props(self):
         vecs = self.segments['end'] - self.segments['start']
         self.segments['angle'] = np.arctan2(vecs['y'], vecs['x'])
+        self.segments['length'] = np.sqrt(np.sum(np.square(vecs), 1))
 
     def _process_data(self):
         self.center = np.mean(self.section[['lat', 'long']])
         self.extents = gps.Extents(self.section[['lat', 'long']], 0.0005, 0.0005)
         self._calc_xy()
         self._calc_segments()
-        self._calc_segment_angles()
+        self._calc_segment_props()
         self.approx_len = self._calc_approx_len()
 
     def min_pt_dist_approx(self, points):

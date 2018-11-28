@@ -18,7 +18,7 @@ class CabData(object):
             self.cabtraces_from_save(cab_traces_file)
         else:
             self.read_cabtraces()
-            self.cab_traces.to_pickle(cab_traces_file)
+            self.save_cabtraces(cab_traces_file)
 
     def _tag_value(self, line, tag_name):
         try:
@@ -63,6 +63,9 @@ class CabData(object):
         self.cab_traces = pd.concat(cab_data_list, ignore_index=True)
         self.cab_traces.sort_values(by=['cab_id', 'time'], inplace=True)
         self.cab_traces.reset_index(drop=True, inplace=True)
+
+    def save_cabtraces(self, fname):
+        self.cab_traces.to_pickle(fname)
 
     def cabtraces_from_save(self, fname):
         self.cab_traces = pd.read_pickle(fname)

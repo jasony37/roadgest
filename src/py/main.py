@@ -20,7 +20,7 @@ def main():
     cab_data.calc_xy(*road_section.center)
     cab_data.calc_deltas()
     times = (1211301600, 1211305000)
-    cab_data.assign_road_segments(road_section, 12.0, np.deg2rad(30.0), times)
+    cab_data.assign_road_segments(road_section, 11.0, np.deg2rad(30.0), times)
     vis.core.plot_cabs_in_time(cab_data.cab_traces, times, road_section.extents)
     #vis.core.plot_timestamps(cab_data.cab_traces, 1212991838, 1212995438)
 
