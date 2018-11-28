@@ -80,9 +80,9 @@ class CabData(object):
         cab_traces_grouped = self.cab_traces.groupby('cab_id')[['time', 'x', 'y']]
         delta = cab_traces_grouped.shift(0) - cab_traces_grouped.shift(1)
         delta.loc[delta['time'] > dtime_max, 'time'] = np.nan
-        self.cab_traces['dir'] = np.arctan2(delta['y'], delta['x'])
         self.cab_traces['vx'] = delta['x'] / delta['time']
         self.cab_traces['vy'] = delta['y'] / delta['time']
+        self.cab_traces['dir'] = np.arctan2(self.cab_traces['vy'], self.cab_traces['vx'])
 
     def assign_road_segments(self, road_section, dist_thresh, angle_thresh, time_lims=None):
         """
