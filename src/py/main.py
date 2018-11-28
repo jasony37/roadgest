@@ -13,15 +13,22 @@ def args_setup():
     return args_parser.parse_args()
 
 
+def process_cab_data(args, road_section, time_lims=None):
+    cab_data = proc.cabdata.CabData(args.datadir)
+    if cab_data.delta_data_exists() is False:
+        cab_data.calc_xy(*road_section.center)
+        cab_data.calc_deltas()
+        cab_data.save_cabtraces()
+    cab_data.assign_road_segments(road_section, 11.0, np.deg2rad(30.0), time_lims)
+    return cab_data
+
+
 def main():
     args = args_setup()
-    cab_data = proc.cabdata.CabData(args.datadir)
     road_section = proc.road.RoadSection(args.road)
-    cab_data.calc_xy(*road_section.center)
-    cab_data.calc_deltas()
-    times = (1211301600, 1211305000)
-    cab_data.assign_road_segments(road_section, 11.0, np.deg2rad(30.0), times)
-    vis.core.plot_cabs_in_time(cab_data.cab_traces, times, road_section.extents)
+    time_lims = (1211301600, 1211305000)
+    cab_data = process_cab_data(args, road_section, time_lims)
+    vis.core.plot_cabs_in_time(cab_data.cab_traces, time_lims, road_section.extents)
     #vis.core.plot_timestamps(cab_data.cab_traces, 1212991838, 1212995438)
 
 

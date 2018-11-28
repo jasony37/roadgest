@@ -12,13 +12,13 @@ class CabData(object):
         self._fname = os.path.join(dirname, "_cabs.txt")
         self.cab_list = None
         self.cab_traces = None
-        cab_traces_file = os.path.join(dirname, "cab_traces.pickle")
+        self.cab_traces_file = os.path.join(dirname, "cab_traces.zip")
         self.read_cablist()
-        if os.path.isfile(cab_traces_file):
-            self.cabtraces_from_save(cab_traces_file)
+        if os.path.isfile(self.cab_traces_file):
+            self.cabtraces_from_save(self.cab_traces_file)
         else:
             self.read_cabtraces()
-            self.save_cabtraces(cab_traces_file)
+            self.save_cabtraces()
 
     def _tag_value(self, line, tag_name):
         try:
@@ -64,8 +64,8 @@ class CabData(object):
         self.cab_traces.sort_values(by=['cab_id', 'time'], inplace=True)
         self.cab_traces.reset_index(drop=True, inplace=True)
 
-    def save_cabtraces(self, fname):
-        self.cab_traces.to_pickle(fname)
+    def save_cabtraces(self):
+        self.cab_traces.to_pickle(self.cab_traces_file)
 
     def cabtraces_from_save(self, fname):
         self.cab_traces = pd.read_pickle(fname)
@@ -86,6 +86,9 @@ class CabData(object):
         self.cab_traces['vx'] = delta['x'] / delta['time']
         self.cab_traces['vy'] = delta['y'] / delta['time']
         self.cab_traces['dir'] = np.arctan2(self.cab_traces['vy'], self.cab_traces['vx'])
+
+    def delta_data_exists(self):
+        return 'dir' in self.cab_traces.columns
 
     def assign_road_segments(self, road_section, dist_thresh, angle_thresh, time_lims=None):
         """
