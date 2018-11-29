@@ -12,7 +12,7 @@ class CabData(object):
         self._fname = os.path.join(dirname, "_cabs.txt")
         self.cab_list = None
         self.cab_traces = None
-        self.cab_traces_file = os.path.join(dirname, "cab_traces.zip")
+        self.cab_traces_file = os.path.join(dirname, "cab_traces.pickle")
         self.read_cablist()
         if os.path.isfile(self.cab_traces_file):
             self.cabtraces_from_save(self.cab_traces_file)
@@ -90,6 +90,13 @@ class CabData(object):
     def delta_data_exists(self):
         return 'dir' in self.cab_traces.columns
 
+    def rows_within_time(self, time_lims):
+        if time_lims is not None:
+            rel_rows = self.cab_traces['time'].between(time_lims[0], time_lims[1])
+        else:
+            rel_rows = np.full(len(self.cab_traces.index), True)
+        return rel_rows
+
     def assign_road_segments(self, road_section, dist_thresh, angle_thresh, time_lims=None):
         """
         For each cab in self.cab_traces, data must previously be sorted by
@@ -100,15 +107,18 @@ class CabData(object):
         :param time_lims: tuple (start, end) between which to assign segments
         :return:
         """
-        cab_traces = self.cab_traces
-        if time_lims is not None:
-            rel_rows = cab_traces['time'].between(time_lims[0], time_lims[1])
-        else:
-            rel_rows = cab_traces['time']
-        cab_traces = cab_traces[rel_rows]
+        rel_rows = self.rows_within_time(time_lims)
+        cab_traces = self.cab_traces[rel_rows]
         seg_assn = gps.assign_segments(cab_traces, road_section, dist_thresh, angle_thresh)
         seg_assn = pd.DataFrame({'segment': seg_assn})
         seg_assn.set_index(self.cab_traces.index[rel_rows], inplace=True)
         self.cab_traces['segment'] = seg_assn
         # self.cab_traces.groupby('cab_id').first()
         pass
+
+    def calc_avg_segment_vels(self, segments, time_lims):
+        rel_rows = self.rows_within_time(time_lims)
+        traces = self.cab_traces[rel_rows]
+        traces = traces[traces['segment'] >= 0]
+        traces_grouped = traces.groupby('segment')[['vx', 'vy']]
+        return traces_grouped.mean()
