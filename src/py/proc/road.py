@@ -24,10 +24,21 @@ class RoadSection(object):
         segments = segments[:-1]
         self.segments = segments
 
+    def _form_ramp_col(self):
+        ramps = self.section[['on_ramp', 'off_ramp']].shift(-1)
+        ramps = ramps[:-1]
+        assert not np.any(ramps.sum(axis=1) > 1)
+        col = pd.Series(['none'] * len(ramps.index))
+        col[ramps['on_ramp'] == 1] = 'on'
+        col[ramps['off_ramp'] == 1] = 'off'
+        return col
+
     def _calc_segment_props(self):
         vecs = self.segments['end'] - self.segments['start']
         self.segments['angle'] = np.arctan2(vecs['y'], vecs['x'])
         self.segments['length'] = np.sqrt(np.sum(np.square(vecs), 1))
+        self.segments['ramp'] = self._form_ramp_col()
+        self.n_ramps = np.sum(self.segments['ramp'] != 'none')
 
     def _process_data(self):
         self.center = np.mean(self.section[['lat', 'long']])
