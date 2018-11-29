@@ -48,6 +48,12 @@ class RoadSection(object):
         self._calc_segment_props()
         self.approx_len = self._calc_approx_len()
 
+    def get_ramp_indexes(self):
+        return self.segments['ramp'].index[self.segments['ramp'] != 'none']
+
+    def get_onramp_mask_of_nramps(self):
+        return self.segments['ramp'][self.get_ramp_indexes()] == 'on'
+
     def min_pt_dist_approx(self, points):
         sec_start = self.section.loc[0, ['x', 'y']]
         sec_start = sec_start.squeeze()  # turn into Series

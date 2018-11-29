@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 
 
+max_age_use_prev_speed = 1800
+velocity_default = 22
+
+
 class RoadStateEstimator(object):
     def __init__(self, road_section, timestep, start_time):
         self.time = start_time
@@ -11,7 +15,9 @@ class RoadStateEstimator(object):
         self.n_states = self.n_segments + self.road_section.n_ramps
         self.state = self._init_state()
         self.covar = self._init_covar()
-        pass
+        self.prev_speeds = pd.DataFrame({'speed': np.full(self.n_segments, np.nan),
+                                         'age': [0] * self.n_segments})
+        self._transition_mat_template = self._calc_transition_mat_template()
 
     def _init_state(self):
         # for first density we can use flow coming into section
@@ -21,7 +27,31 @@ class RoadStateEstimator(object):
     def _init_covar(self):
         return np.identity(self.n_states)
 
+    def _valid_prev_speeds(self, max_age):
+        valid_prev_speeds = np.invert(np.isnan(self.prev_speeds['speed']))
+        return np.logical_and(valid_prev_speeds, self.prev_speeds['age'] <= max_age)
+
+    def _calc_transition_mat_template(self):
+        mat_ul = np.zeros([self.n_segments, self.n_segments])
+        mat_ll = np.zeros([self.road_section.n_ramps, self.n_segments])
+        mat_ur = np.transpose(mat_ll).copy()
+        onramp_col_mask = self.road_section.get_onramp_mask_of_nramps().reset_index(drop=True)
+        mat_ur[self.road_section.segments['ramp'] == 'on', onramp_col_mask] = 1
+        mat_ur[self.road_section.segments['ramp'] == 'off', np.invert(onramp_col_mask)] = -1
+        mat_lr = np.identity(self.road_section.n_ramps)
+        return np.block([[mat_ul, mat_ur],
+                         [mat_ll, mat_lr]])
+
     def _calc_transition_mat(self, segment_vels):
-        trans = np.identity(self.n_states)
-        vels = pd.Index(range(self.n_segments))
-        outlet_terms = 1.0 - self.timestep / self.road_section['lengths']
+        vels = segment_vels.reindex(pd.Index(range(self.n_segments)))
+        fill_with_prev = np.logical_and(self._valid_prev_speeds(max_age_use_prev_speed),
+                                        np.isnan(vels))
+        vels[fill_with_prev] = self.prev_speeds['speed'][fill_with_prev]
+        vels[np.isnan(vels)] = velocity_default
+        outlet_terms = 1.0 - (self.timestep / self.road_section.segments['length']) * vels
+        inlet_terms = self.timestep / self.road_section.segments.loc[1:, 'length']
+        inlet_terms = inlet_terms.reset_index(drop=True) * vels[:-1]
+        mat_ul = np.diag(outlet_terms) + np.diag(inlet_terms, k=-1)
+        mat_full = self._transition_mat_template.copy()
+        mat_full[:self.n_segments, :self.n_segments] = mat_ul
+        return mat_full
