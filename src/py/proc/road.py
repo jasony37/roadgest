@@ -3,6 +3,7 @@ import pandas as pd
 
 from proc import gps
 
+
 class RoadSection(object):
     def __init__(self, fname):
         self.section = pd.read_csv(fname)
