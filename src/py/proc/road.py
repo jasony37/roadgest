@@ -2,12 +2,14 @@ import numpy as np
 import pandas as pd
 
 from proc import gps
+from proc import detectors
 
 
 class RoadSection(object):
-    def __init__(self, fname):
+    def __init__(self, fname, vds_dir):
         self.section = pd.read_csv(fname)
         self._process_data()
+        self._read_detectors(vds_dir)
 
     def _calc_xy(self):
         self.section['x'] = gps.long_to_x(self.section['long'], *self.center)
@@ -48,6 +50,10 @@ class RoadSection(object):
         self._calc_segments()
         self._calc_segment_props()
         self.approx_len = self._calc_approx_len()
+
+    def _read_detectors(self, dirname):
+        self.section['vds_data'] = self.section.apply(detectors.read_detector_if_exists,
+                                                      axis=1, args=[dirname])
 
     def get_ramp_indexes(self):
         return self.segments['ramp'].index[self.segments['ramp'] != 'none']

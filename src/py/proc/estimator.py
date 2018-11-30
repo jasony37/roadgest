@@ -64,7 +64,9 @@ class RoadStateEstimator(object):
         mat_full[:self.n_segments, :self.n_segments] = mat_ul
         return mat_full
 
-    def _calc_input_mat(self, flow_in):
+    def _calc_input_mat(self):
+        detector_first = self.road_section.section['vds_data'][0]
+        flow_in = detector_first.calc_val_at_time('flow', self.time)
         u = np.zeros(self.n_segments - self.road_section.n_ramps + 1)
         u[0] = flow_in
         return u
@@ -94,10 +96,10 @@ class RoadStateEstimator(object):
         vars_total = np.append(vars_total, [ramp_noise_var] * self.road_section.n_ramps)
         return vars_total
 
-    def predict(self, segment_vels, flow_in):
+    def predict(self, segment_vels):
         A = self._calc_transition_mat(segment_vels)
         B = self._input_transition_mat
-        u = self._calc_input_mat(flow_in)
+        u = self._calc_input_mat()
         self.state = np.matmul(A, self.state) + np.matmul(B, u)
         self.error_covar = np.matmul(np.matmul(A, self.error_covar), A.transpose())
         self.error_covar += + self._process_covar
