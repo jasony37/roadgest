@@ -5,12 +5,14 @@ import vis.core
 import proc.cabdata
 import proc.road
 import proc.estimator
+import proc.detectors
 
 
 def args_setup():
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument('datadir', help="Path to cabspottingdata")
     args_parser.add_argument('road', help="Path to road section CSV")
+    args_parser.add_argument('vds', help="Path to directory containing stationary detector data")
     return args_parser.parse_args()
 
 
