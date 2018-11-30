@@ -19,8 +19,8 @@ def process_cab_data(args, road_section, time_lims=None):
     if cab_data.delta_data_exists() is False:
         cab_data.calc_xy(*road_section.center)
         cab_data.calc_deltas()
+        cab_data.assign_road_segments(road_section, 11.0, np.deg2rad(30.0), time_lims)
         cab_data.save_cabtraces()
-    cab_data.assign_road_segments(road_section, 11.0, np.deg2rad(30.0), time_lims)
     return cab_data
 
 
@@ -28,7 +28,7 @@ def main():
     args = args_setup()
     road_section = proc.road.RoadSection(args.road)
     time_lims = (1211301600, 1211305000)
-    cab_data = process_cab_data(args, road_section, time_lims)
+    cab_data = process_cab_data(args, road_section, None)
     estimate = proc.estimator.RoadStateEstimator(road_section, 5, time_lims[0])
     vels = cab_data.calc_avg_segment_vels(road_section.segments, (time_lims[0], time_lims[0] + 5))
     vels = np.sqrt(np.square(vels).sum(axis=1))
