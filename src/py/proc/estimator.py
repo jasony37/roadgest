@@ -18,9 +18,14 @@ class RoadSpeedBuffer(object):
         self.data = pd.DataFrame({'speed': np.full(n_segments, np.nan),
                                   'age': [0] * n_segments})
 
-    def valid_speeds(self, max_age):
+    def valid_speeds_filt(self, max_age):
         valid_prev_speeds = np.invert(np.isnan(self.data['speed']))
         return np.logical_and(valid_prev_speeds, self.data['age'] <= max_age)
+
+    def valid_speeds(self, max_age):
+        tmp = self.data['speed'].copy()
+        tmp[np.invert(self.valid_speeds_filt(max_age))]['speed'] = np.nan
+        return tmp
 
     def update(self, cur_speeds):
         avail_idxs = list(cur_speeds.index)
@@ -82,7 +87,7 @@ class RoadStateEstimator(object):
 
     def _calc_transition_mat(self, segment_vels):
         vels = segment_vels.reindex(pd.Index(range(self.n_segments)))
-        fill_with_prev = np.logical_and(self.speed_buffer.valid_speeds(max_age_use_prev_speed),
+        fill_with_prev = np.logical_and(self.speed_buffer.valid_speeds_filt(max_age_use_prev_speed),
                                         np.isnan(vels))
         vels[fill_with_prev] = self.speed_buffer.data['speed'][fill_with_prev]
         vels[np.isnan(vels)] = velocity_default
