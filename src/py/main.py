@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import logging
 
 import vis.core
 import proc.cabdata
@@ -28,13 +29,15 @@ def process_cab_data(args, road_section, time_lims=None):
 
 def main():
     args = args_setup()
+    logging.basicConfig(level=logging.INFO)
     road_section = proc.road.RoadSection(args.road, args.vdsdir)
-    time_lims = (1211018404, 1213089934)
+    time_lims = (1211029200, 1213089934)
     cab_data = process_cab_data(args, road_section, None)
     estimate = proc.estimator.RoadStateEstimator(road_section, 5, time_lims[0])
+    # map_plotter = vis.core.MapPlotter(cab_data.cab_traces, road_section.extents)
     while estimate.time < time_lims[1]:
         estimate.run_iteration(cab_data)
-    # vis.core.plot_cabs_in_time(cab_data.cab_traces, time_lims, road_section.extents)
+        # map_plotter.plot_cabs_in_time([estimate.time - estimate.timestep + 1, estimate.time])
     # vis.core.plot_timestamps(cab_data.cab_traces, 1212991838, 1212995438)
 
 

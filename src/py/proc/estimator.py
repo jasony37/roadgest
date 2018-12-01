@@ -1,14 +1,15 @@
 import numpy as np
 import pandas as pd
+import logging
 
 max_age_use_prev_speed = 1800
-velocity_default = 22
+velocity_default = 29
 measured_flow_idxs = [1, 2]
 gps_pos_var = 3.0**2
 gps_interval = 60  # time between measurements, in seconds
 typ_segment_density = 0.04  # typical segment density, in vehicles/meter
 density_process_noise = 2.5e-5  # expected noise in segment density in 1 sec
-ramp_density_init_val = 0.01
+ramp_density_init_val = 0.005
 ramp_density_process_noise = 1e-5
 
 
@@ -30,6 +31,7 @@ class RoadSpeedBuffer(object):
 
 class RoadStateEstimator(object):
     def __init__(self, road_section, timestep, start_time):
+        self.logger = logging.getLogger("RoadStateEstimator")
         self.time = start_time
         self.timestep = timestep
         self.road_section = road_section
@@ -139,11 +141,15 @@ class RoadStateEstimator(object):
     def _increment_time(self):
         self.time += self.timestep
 
+    def _limit_state_to_positive(self):
+        self.state = np.clip(self.state, 0.0, None)
+
     def predict(self, segment_vels):
         A = self._calc_transition_mat(segment_vels)
         B = self._input_transition_mat
         u = self._calc_input_mat()
         self.state = np.matmul(A, self.state) + np.matmul(B, u)
+        self._limit_state_to_positive()
         self.error_covar = np.matmul(np.matmul(A, self.error_covar), A.transpose())
         self.error_covar += self._process_covar
 
@@ -151,15 +157,20 @@ class RoadStateEstimator(object):
         K = self._calc_kalman_gain()
         innov = meas - np.matmul(self._state_to_meas_mat, self.state)
         self.state += np.matmul(K, innov)
+        self._limit_state_to_positive()
         I = np.identity(self.n_states)
         error_covar_factor = I - np.matmul(K, self._state_to_meas_mat)
         self.error_covar = np.matmul(error_covar_factor, self.error_covar)
 
     def run_iteration(self, cab_data):
+        self.logger.info("========= ITERATION @ {} ==========".format(self.time + self.timestep))
         times = [self.time - self.timestep + 1, self.time]
         segment_speeds = cab_data.calc_avg_segment_speeds(self.road_section.segments, times)
+        self.logger.info("Speeds from cab data: {}".format(segment_speeds))
         self.predict(segment_speeds)
+        self.logger.info("Predicted state: {}".format(self.state))
         self._increment_time()
         self.speed_buffer.update(segment_speeds)
         meas = self.road_section.calc_density_meas_at_time(self.time)
         self.update(np.array(meas)[1:])
+        self.logger.info("Updated state: {}".format(self.state))
