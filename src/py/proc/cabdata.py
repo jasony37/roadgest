@@ -85,6 +85,7 @@ class CabData(object):
         delta.loc[delta['time'] > dtime_max, 'time'] = np.nan
         self.cab_traces['vx'] = delta['x'] / delta['time']
         self.cab_traces['vy'] = delta['y'] / delta['time']
+        self.cab_traces['speed'] = np.sqrt(np.square(self.cab_traces[['vx', 'vy']]).sum(axis=1))
         self.cab_traces['dir'] = np.arctan2(self.cab_traces['vy'], self.cab_traces['vx'])
 
     def delta_data_exists(self):
@@ -116,9 +117,9 @@ class CabData(object):
         # self.cab_traces.groupby('cab_id').first()
         pass
 
-    def calc_avg_segment_vels(self, segments, time_lims):
+    def calc_avg_segment_speeds(self, segments, time_lims):
         rel_rows = self.rows_within_time(time_lims)
         traces = self.cab_traces[rel_rows]
         traces = traces[traces['segment'] >= 0]
-        traces_grouped = traces.groupby('segment')[['vx', 'vy']]
+        traces_grouped = traces.groupby('segment')['speed']
         return traces_grouped.mean()

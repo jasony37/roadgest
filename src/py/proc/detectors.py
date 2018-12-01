@@ -40,7 +40,7 @@ class StatDetector(object):
                            converters={"5 Minutes": self.time_to_unix})
         data["Flow (Veh/5 Minutes)"] /= 300.0
         data["Speed (mph)"] *= mph_to_mps
-        data.columns = ["time", "flow", "speed"]
+        data.columns = ['time', 'flow', 'speed']
         return data
 
     def calc_val_at_time(self, col, time):
@@ -64,8 +64,7 @@ class StatDetector(object):
                               self.data[col].values[[idx1, idx2]])
 
 
-def read_detector_if_exists(row_with_vds_id, dirname):
-    vds_id = row_with_vds_id['vds_id']
+def read_detector_if_exists(vds_id, dirname):
     if vds_id is not None and not np.isnan(vds_id):
         return StatDetector(dirname, int(vds_id))
     return None

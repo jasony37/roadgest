@@ -51,8 +51,16 @@ class RoadSection(object):
         self._calc_segment_props()
         self.approx_len = self._calc_approx_len()
 
+    @classmethod
+    def _read_detector_from_row(cls, row, dirname):
+        return detectors.read_detector_if_exists(row['vds_id'], dirname)
+
+    @classmethod
+    def _get_detector_val_from_row(cls, row, col, time):
+        return row['vds_data'].calc_val_at_time(col, time)
+
     def _read_detectors(self, dirname):
-        self.section['vds_data'] = self.section.apply(detectors.read_detector_if_exists,
+        self.section['vds_data'] = self.section.apply(RoadSection._read_detector_from_row,
                                                       axis=1, args=[dirname])
 
     def get_ramp_indexes(self):
@@ -98,3 +106,13 @@ class RoadSection(object):
             pt_proj_dists.clip(0.0, 1.0, inplace=True)
             pt_projs = starts + line_vec.multiply(pt_proj_dists, axis=0)
             return np.sqrt(gps.dist_sqr(point, pt_projs))
+
+    def calc_density_meas_at_time(self, time):
+        points_with_dets = self.section[self.section['vds_data'] is not None]
+        flows = points_with_dets.apply(RoadSection._get_detector_val_from_row,
+                                       axis=1, args=['flow', time])
+        speeds = points_with_dets.apply(RoadSection._get_detector_val_from_row,
+                                       axis=1, args=['speed', time])
+        speeds[speeds == 0.0] = np.nan
+        densities = flows / speeds
+        return np.nan_to_num(densities)

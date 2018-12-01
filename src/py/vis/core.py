@@ -26,8 +26,7 @@ def generate_map(extents):
     return bm
 
 
-def normalize_vel(velocity):
-    vel_norm = np.sqrt(np.square(velocity).sum(axis=1))
+def normalize_vel(velocity, vel_norm):
     vel_norm.fillna(0.01)
     vel_norm[vel_norm < 0.000001] = 0.01
     vx_norm = velocity['vx'].div(vel_norm)
@@ -42,7 +41,7 @@ def plot_cabs_in_time(cab_traces, times, extents):
     bm = generate_map(extents)
     x, y = bm(rel_traces['long'].values, rel_traces['lat'].values)
 
-    vx_norm, vy_norm = normalize_vel(rel_traces[['vx', 'vy']])
+    vx_norm, vy_norm = normalize_vel(rel_traces[['vx', 'vy']], rel_traces['speed'])
 
     road_filt = rel_traces['segment'] >= 0
     plt.quiver(x[road_filt], y[road_filt], vx_norm[road_filt], vy_norm[road_filt],

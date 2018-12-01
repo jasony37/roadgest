@@ -11,6 +11,18 @@ density_process_noise = 2.5e-5  # expected noise in segment density in 1 sec
 ramp_density_process_noise = 1e-5
 
 
+class RoadSpeedBuffer(object):
+    def __init__(self, n_segments):
+        self.data = pd.DataFrame({'speed': np.full(n_segments, np.nan),
+                                  'age': [0] * n_segments})
+
+    def update(self, cur_speeds):
+        avail_idxs = list(cur_speeds.index)
+        self.data['age'] += 1
+        self.data.loc[avail_idxs, 'speed'] = cur_speeds['speed']
+        self.data.loc[avail_idxs, 'age'] = 0
+
+
 class RoadStateEstimator(object):
     def __init__(self, road_section, timestep, start_time):
         self.time = start_time
@@ -20,12 +32,12 @@ class RoadStateEstimator(object):
         self.n_states = self.n_segments + self.road_section.n_ramps
         self.state = self._init_state()
         self.error_covar = self._init_covar()
-        self.prev_speeds = pd.DataFrame({'speed': np.full(self.n_segments, np.nan),
-                                         'age': [0] * self.n_segments})
+        self.speed_buffer = RoadSpeedBuffer(self.n_segments)
         self._transition_mat_template = self._calc_transition_mat_template()
         self._input_transition_mat = self._calc_input_transition_mat()
         self._state_to_meas_mat = self._calc_state_to_meas_mat(measured_flow_idxs)
         self._process_covar = self._calc_process_covar()
+        self._measurement_covar = self._calc_measurement_covar()
 
     def _init_state(self):
         # for first density we can use flow coming into section
@@ -36,8 +48,8 @@ class RoadStateEstimator(object):
         return np.identity(self.n_states)
 
     def _valid_prev_speeds(self, max_age):
-        valid_prev_speeds = np.invert(np.isnan(self.prev_speeds['speed']))
-        return np.logical_and(valid_prev_speeds, self.prev_speeds['age'] <= max_age)
+        valid_prev_speeds = np.invert(np.isnan(self.speed_buffer['speed']))
+        return np.logical_and(valid_prev_speeds, self.speed_buffer['age'] <= max_age)
 
     def _calc_transition_mat_template(self):
         mat_ul = np.zeros([self.n_segments, self.n_segments])
@@ -54,7 +66,7 @@ class RoadStateEstimator(object):
         vels = segment_vels.reindex(pd.Index(range(self.n_segments)))
         fill_with_prev = np.logical_and(self._valid_prev_speeds(max_age_use_prev_speed),
                                         np.isnan(vels))
-        vels[fill_with_prev] = self.prev_speeds['speed'][fill_with_prev]
+        vels[fill_with_prev] = self.speed_buffer['speed'][fill_with_prev]
         vels[np.isnan(vels)] = velocity_default
         outlet_terms = 1.0 - (self.timestep / self.road_section.segments['length']) * vels
         inlet_terms = self.timestep / self.road_section.segments.loc[1:, 'length']
@@ -96,11 +108,43 @@ class RoadStateEstimator(object):
         vars_total = np.append(vars_total, [ramp_noise_var] * self.road_section.n_ramps)
         return vars_total
 
+    def _calc_measurement_covar(self):
+        return np.diag([3.12e-4, 6.82e-4, 2.70e-4])
+
+    def _calc_kalman_gain(self):
+        H = self._state_to_meas_mat
+        Ht = H.transpose()
+        P = self.error_covar
+        R = self._measurement_covar
+        numerator = np.matmul(P, Ht)
+        denominator = np.matmul(np.matmul(H, P), Ht) + R
+        return np.matmul(numerator, np.linalg.inv(denominator))
+
+    def _increment_time(self):
+        self.time += self.timestep
+
     def predict(self, segment_vels):
         A = self._calc_transition_mat(segment_vels)
         B = self._input_transition_mat
         u = self._calc_input_mat()
         self.state = np.matmul(A, self.state) + np.matmul(B, u)
         self.error_covar = np.matmul(np.matmul(A, self.error_covar), A.transpose())
-        self.error_covar += + self._process_covar
+        self.error_covar += self._process_covar
         pass
+
+    def update(self, meas):
+        K = self._calc_kalman_gain()
+        innov = meas - np.matmul(self._state_to_meas_mat, self.state)
+        self.state += np.matmul(K, innov)
+        I = np.identity(self.n_states)
+        error_covar_factor = I - np.matmul(K, self._state_to_meas_mat)
+        self.error_covar = np.matmul(error_covar_factor, self.error_covar)
+
+    def run_iteration(self, cab_data):
+        times = [self.time - self.timestep + 1, self.time]
+        segment_speeds = cab_data.calc_avg_segment_speeds(self.road_section.segments, times)
+        self.predict(segment_speeds)
+        self._increment_time()
+        self.speed_buffer.update(segment_speeds)
+        meas = self.road_section.calc_density_meas_at_time(self.time)
+        self.update(np.array(meas))
