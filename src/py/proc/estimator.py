@@ -6,7 +6,7 @@ velocity_default = 22
 measured_flow_idxs = [1, 2]
 gps_pos_var = 3.0**2
 gps_interval = 60  # time between measurements, in seconds
-typ_segment_density = 0.05  # typical segment density, in vehicles/meter
+typ_segment_density = 0.04  # typical segment density, in vehicles/meter
 density_process_noise = 2.5e-5  # expected noise in segment density in 1 sec
 ramp_density_init_val = 0.01
 ramp_density_process_noise = 1e-5
@@ -17,10 +17,14 @@ class RoadSpeedBuffer(object):
         self.data = pd.DataFrame({'speed': np.full(n_segments, np.nan),
                                   'age': [0] * n_segments})
 
+    def valid_speeds(self, max_age):
+        valid_prev_speeds = np.invert(np.isnan(self.data['speed']))
+        return np.logical_and(valid_prev_speeds, self.data['age'] <= max_age)
+
     def update(self, cur_speeds):
         avail_idxs = list(cur_speeds.index)
         self.data['age'] += 1
-        self.data.loc[avail_idxs, 'speed'] = cur_speeds['speed']
+        self.data.loc[avail_idxs, 'speed'] = cur_speeds
         self.data.loc[avail_idxs, 'age'] = 0
 
 
@@ -63,10 +67,6 @@ class RoadStateEstimator(object):
         ramp_terms = np.full(self.road_section.n_ramps, (ramp_density_init_val / 2.0)**2)
         return np.diag(np.concatenate((segment_terms, ramp_terms)))
 
-    def _valid_prev_speeds(self, max_age):
-        valid_prev_speeds = np.invert(np.isnan(self.speed_buffer['speed']))
-        return np.logical_and(valid_prev_speeds, self.speed_buffer['age'] <= max_age)
-
     def _calc_transition_mat_template(self):
         mat_ul = np.zeros([self.n_segments, self.n_segments])
         mat_ll = np.zeros([self.road_section.n_ramps, self.n_segments])
@@ -80,9 +80,9 @@ class RoadStateEstimator(object):
 
     def _calc_transition_mat(self, segment_vels):
         vels = segment_vels.reindex(pd.Index(range(self.n_segments)))
-        fill_with_prev = np.logical_and(self._valid_prev_speeds(max_age_use_prev_speed),
+        fill_with_prev = np.logical_and(self.speed_buffer.valid_speeds(max_age_use_prev_speed),
                                         np.isnan(vels))
-        vels[fill_with_prev] = self.speed_buffer['speed'][fill_with_prev]
+        vels[fill_with_prev] = self.speed_buffer.data['speed'][fill_with_prev]
         vels[np.isnan(vels)] = velocity_default
         outlet_terms = 1.0 - (self.timestep / self.road_section.segments['length']) * vels
         inlet_terms = self.timestep / self.road_section.segments.loc[1:, 'length']
@@ -146,7 +146,6 @@ class RoadStateEstimator(object):
         self.state = np.matmul(A, self.state) + np.matmul(B, u)
         self.error_covar = np.matmul(np.matmul(A, self.error_covar), A.transpose())
         self.error_covar += self._process_covar
-        pass
 
     def update(self, meas):
         K = self._calc_kalman_gain()
@@ -163,4 +162,4 @@ class RoadStateEstimator(object):
         self._increment_time()
         self.speed_buffer.update(segment_speeds)
         meas = self.road_section.calc_density_meas_at_time(self.time)
-        self.update(np.array(meas))
+        self.update(np.array(meas)[1:])

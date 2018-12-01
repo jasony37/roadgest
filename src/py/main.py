@@ -29,9 +29,11 @@ def process_cab_data(args, road_section, time_lims=None):
 def main():
     args = args_setup()
     road_section = proc.road.RoadSection(args.road, args.vdsdir)
-    time_lims = (1211301600, 1211305000)
+    time_lims = (1211018404, 1213089934)
     cab_data = process_cab_data(args, road_section, None)
     estimate = proc.estimator.RoadStateEstimator(road_section, 5, time_lims[0])
+    while estimate.time < time_lims[1]:
+        estimate.run_iteration(cab_data)
     # vis.core.plot_cabs_in_time(cab_data.cab_traces, time_lims, road_section.extents)
     # vis.core.plot_timestamps(cab_data.cab_traces, 1212991838, 1212995438)
 
