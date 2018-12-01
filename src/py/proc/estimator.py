@@ -31,7 +31,7 @@ class RoadStateEstimator(object):
         self.n_segments = len(self.road_section.segments.index)
         self.n_states = self.n_segments + self.road_section.n_ramps
         self.state = self._init_state()
-        self.error_covar = self._init_covar()
+        self.error_covar = self._init_error_covar()
         self.speed_buffer = RoadSpeedBuffer(self.n_segments)
         self._transition_mat_template = self._calc_transition_mat_template()
         self._input_transition_mat = self._calc_input_transition_mat()
@@ -42,9 +42,12 @@ class RoadStateEstimator(object):
     def _init_state(self):
         # for first density we can use flow coming into section
         # for subsequent densities use previous density, or flow if part of measurement
-        return np.array([0] * self.n_states)
+        state = np.array([0] * self.n_states)
+        densities = self.road_section.calc_density_meas_at_time(self.time)
+        self._increment_time()
+        return state
 
-    def _init_covar(self):
+    def _init_error_covar(self):
         return np.identity(self.n_states)
 
     def _valid_prev_speeds(self, max_age):
