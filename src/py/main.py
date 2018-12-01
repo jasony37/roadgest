@@ -32,8 +32,6 @@ def main():
     time_lims = (1211301600, 1211305000)
     cab_data = process_cab_data(args, road_section, None)
     estimate = proc.estimator.RoadStateEstimator(road_section, 5, time_lims[0])
-    vels = cab_data.calc_avg_segment_speeds(road_section.segments, (time_lims[0], time_lims[0] + 5))
-    vels = np.sqrt(np.square(vels).sum(axis=1))
     # vis.core.plot_cabs_in_time(cab_data.cab_traces, time_lims, road_section.extents)
     # vis.core.plot_timestamps(cab_data.cab_traces, 1212991838, 1212995438)
 

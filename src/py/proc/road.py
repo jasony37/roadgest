@@ -108,11 +108,11 @@ class RoadSection(object):
             return np.sqrt(gps.dist_sqr(point, pt_projs))
 
     def calc_density_meas_at_time(self, time):
-        points_with_dets = self.section[self.section['vds_data'] is not None]
+        points_with_dets = self.section[np.invert(np.equal(self.section['vds_data'], None))]
         flows = points_with_dets.apply(RoadSection._get_detector_val_from_row,
                                        axis=1, args=['flow', time])
         speeds = points_with_dets.apply(RoadSection._get_detector_val_from_row,
                                        axis=1, args=['speed', time])
         speeds[speeds == 0.0] = np.nan
         densities = flows / speeds
-        return np.nan_to_num(densities)
+        return densities.fillna(0.0)

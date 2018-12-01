@@ -6,8 +6,9 @@ velocity_default = 22
 measured_flow_idxs = [1, 2]
 gps_pos_var = 3.0**2
 gps_interval = 60  # time between measurements, in seconds
-typ_segment_density = 0.2  # typical segment density, in vehicles/meter
+typ_segment_density = 0.05  # typical segment density, in vehicles/meter
 density_process_noise = 2.5e-5  # expected noise in segment density in 1 sec
+ramp_density_init_val = 0.01
 ramp_density_process_noise = 1e-5
 
 
@@ -42,13 +43,25 @@ class RoadStateEstimator(object):
     def _init_state(self):
         # for first density we can use flow coming into section
         # for subsequent densities use previous density, or flow if part of measurement
-        state = np.array([0] * self.n_states)
+        state = np.full(self.n_states, np.nan)
         densities = self.road_section.calc_density_meas_at_time(self.time)
+        if len(densities) > 0:
+            idx1 = np.array(densities.index)
+            idx1[1:] -= 1
+            idx2 = idx1[1:]
+            idx1 = idx1[:-1]
+            densities = np.array(densities)
+            for ii in range(len(idx1)):
+                state[idx1[ii]:idx2[ii]] = densities[ii]
+            state[self.n_segments - 1] = densities[-1]
+        state[self.n_segments:] = ramp_density_init_val
         self._increment_time()
         return state
 
     def _init_error_covar(self):
-        return np.identity(self.n_states)
+        segment_terms = np.full(self.n_segments, (typ_segment_density / 5.0)**2)
+        ramp_terms = np.full(self.road_section.n_ramps, (ramp_density_init_val / 2.0)**2)
+        return np.diag(np.concatenate((segment_terms, ramp_terms)))
 
     def _valid_prev_speeds(self, max_age):
         valid_prev_speeds = np.invert(np.isnan(self.speed_buffer['speed']))
