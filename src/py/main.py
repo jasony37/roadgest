@@ -41,6 +41,8 @@ def main():
     for time_lim in time_lims:
         estimate = proc.estimator.RoadStateEstimator(road_section, 5, time_lim[0])
         output_fname = os.path.join(args.outputdir, 'estimate_{}_{}.csv'.format(*time_lim))
+        # map_plotter = vis.core.MapPlotter(cab_data.cab_traces, road_section.extents)
+        # map_plotter.plot_cabs_in_time((1212080400, 1212080400+60*30))
         with open(output_fname, 'w', newline='') as outputf:
             output_wr = csv.writer(outputf, dialect='excel')
             # map_plotter = vis.core.MapPlotter(cab_data.cab_traces, road_section.extents)
