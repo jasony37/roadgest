@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
+
+import vis.fd
 
 
 def calc_flows(data):
@@ -15,7 +16,7 @@ def calc_flows(data):
 
 def fit_freeflow(densities, flows):
     A = np.vstack([densities.values, np.ones(len(densities))]).T
-    fit = np.linalg.lstsq(A, flows.values)
+    fit = np.linalg.lstsq(A, flows.values, rcond=None)
     return fit[0]
 
 
@@ -32,23 +33,60 @@ def calc_capacity(flows):
             flows_remain = flows_remain[np.invert(at_max)]
 
 
+def density_at_flow_cap(freeflow_fit, flow_cap):
+    if abs(freeflow_fit[0]) < 0.00001:
+        raise ValueError("Free-flow fit has 0 slope!")
+    return (flow_cap - freeflow_fit[1]) / freeflow_fit[0]
+
+
+def calc_bin_flow(flows):
+    q1 = flows.quantile(q=0.25)
+    q3 = flows.quantile(q=0.75)
+    min_outlier_flow = q3 + 1.5*(q3-q1)
+    return flows[flows < min_outlier_flow].max()
+
+
+def fit_cong(density, flow, crit_pt):
+    density_shifted = density - crit_pt[0]
+    flow_shifted = flow - crit_pt[1]
+    fit = np.linalg.lstsq(density_shifted[:, np.newaxis], flow_shifted, rcond=None)
+    fit = fit[0]
+    fit = np.append(fit, -fit[0] * crit_pt[0] + crit_pt[1])
+    vis.fd.plot_cong_bins(density, flow)
+    return fit
+
+
+def calc_cong_speed_param(data, rho_crit, q_crit):
+    filt = np.logical_and(data['flow'] <= q_crit, data['density'] > rho_crit)
+    data_cong = data[filt].sort_values('density')
+    idxs = data_cong.index
+    data_cong['bin'] =  pd.Series(np.arange(len(data_cong)) // 10 + 1, index=idxs)
+    grouped_bins = data_cong.groupby('bin')
+    bin_densities = grouped_bins['density'].mean()
+    bin_flows = grouped_bins['flow'].agg(calc_bin_flow)
+    return fit_cong(bin_densities, bin_flows, (rho_crit, q_crit))
+
+
 def fit_fd(fname):
     data = pd.read_csv(fname)
     flows = calc_flows(data)
     data = pd.concat([data, flows], axis=1)
     speed_thresh = 25
     for i in range(6):
-        cur_valid = data
-        filt = cur_valid['speed_{}'.format(i)] >= speed_thresh
-        data_free = cur_valid[filt]
-        segment_densities = data_free['density_{}'.format(i)]
-        segment_flows = data_free['flow_{}'.format(i)]
-        freeflow_fit = fit_freeflow(segment_densities, segment_flows)
-        flow_cap = calc_capacity(segment_flows)
-        data_remain = cur_valid[np.invert(filt)]
-        plt.scatter(segment_densities, segment_flows, color='r', s=2)
-        plt.plot(segment_densities, freeflow_fit[0] * segment_densities + freeflow_fit[1], color='r')
-        plt.plot(segment_densities, np.full(len(segment_densities), flow_cap))
-        plt.scatter(data_remain['density_{}'.format(i)], data_remain['flow_{}'.format(i)], color='g', s=2)
-        plt.title(str(i))
-        plt.show()
+        cur_data = pd.DataFrame({'speed': data['speed_{}'.format(i)],
+                                 'density': data['density_{}'.format(i)],
+                                 'flow': data['flow_{}'.format(i)]})
+        filt = cur_data['speed'] >= speed_thresh
+        data_free = cur_data[filt]
+        segment_free_flows = data_free['flow']
+        fit_data = {}
+        fit_data['freeflow_filt'] = filt
+        fit_data['freeflow_fit'] = fit_freeflow(data_free['density'], segment_free_flows)
+        fit_data['flow_cap'] = calc_capacity(segment_free_flows)
+        rho_crit = density_at_flow_cap(fit_data['freeflow_fit'], fit_data['flow_cap'])
+        fit_data['rho_crit'] = rho_crit
+        try:
+            fit_data['cong_fit'] = calc_cong_speed_param(cur_data, rho_crit, fit_data['flow_cap'])
+        except np.linalg.LinAlgError:
+            pass
+        vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data)
