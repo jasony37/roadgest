@@ -20,7 +20,7 @@ def fit_freeflow(densities, flows):
     return fit[0]
 
 
-def calc_capacity(flows):
+def calc_capacity(densities, flows):
     tolerance = 0.005
     min_pts_at_max = 3
     flows_remain = flows
@@ -28,9 +28,9 @@ def calc_capacity(flows):
         cur_max = flows_remain.max()
         at_max = np.logical_and(cur_max - tolerance <= flows, flows <= cur_max + tolerance)
         if np.sum(at_max) >= min_pts_at_max:
-            return cur_max
-        else:
-            flows_remain = flows_remain[np.invert(at_max)]
+            if (densities[at_max].max() - densities[at_max].min()) >= 0.001:
+                return cur_max
+        flows_remain = flows_remain[np.invert(at_max)]
 
 
 def density_at_flow_cap(freeflow_fit, flow_cap):
@@ -78,11 +78,12 @@ def fit_fd(fname):
                                  'flow': data['flow_{}'.format(i)]})
         filt = cur_data['speed'] >= speed_thresh
         data_free = cur_data[filt]
-        segment_free_flows = data_free['flow']
+        segment_free_rho = data_free['density']
+        segment_free_q = data_free['flow']
         fit_data = {}
         fit_data['freeflow_filt'] = filt
-        fit_data['freeflow_fit'] = fit_freeflow(data_free['density'], segment_free_flows)
-        fit_data['flow_cap'] = calc_capacity(segment_free_flows)
+        fit_data['freeflow_fit'] = fit_freeflow(segment_free_rho, segment_free_q)
+        fit_data['flow_cap'] = calc_capacity(segment_free_rho, segment_free_q)
         rho_crit = density_at_flow_cap(fit_data['freeflow_fit'], fit_data['flow_cap'])
         fit_data['rho_crit'] = rho_crit
         try:
