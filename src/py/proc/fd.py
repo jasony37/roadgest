@@ -67,8 +67,9 @@ def calc_cong_speed_param(data, rho_crit, q_crit):
     return fit_cong(bin_densities, bin_flows, (rho_crit, q_crit))
 
 
-def fit_fd(fname):
-    data = pd.read_csv(fname)
+def fit_fd(fnames):
+    data = pd.concat((pd.read_csv(fname) for fname in fnames))
+    data.reset_index(drop=True, inplace=True)
     flows = calc_flows(data)
     data = pd.concat([data, flows], axis=1)
     speed_thresh = 25
