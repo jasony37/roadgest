@@ -17,7 +17,7 @@ def plot_fd(rho, q, fit):
     plt.plot(rho, np.full(len(rho), fit['flow_cap']))
     plt.scatter(rho_cong, q_cong, color='r', s=2)
     plt.scatter([fit['rho_crit']], [fit['flow_cap']])
-    if 'cong_fit' in fit:
+    if 'cong_fit' in fit and fit['cong_fit'] is not None:
         plt.plot(rho_cong, fit['cong_fit'][0] * rho_cong + fit['cong_fit'][1], color='r')
     # plt.title(str(i))
     plt.show()

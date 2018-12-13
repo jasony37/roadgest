@@ -90,5 +90,5 @@ def fit_fd(fnames):
         try:
             fit_data['cong_fit'] = calc_cong_speed_param(cur_data, rho_crit, fit_data['flow_cap'])
         except np.linalg.LinAlgError:
-            pass
+            fit_data['cong_fit'] = None
         vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data)
