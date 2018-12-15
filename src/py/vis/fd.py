@@ -22,6 +22,23 @@ def plot_fd(rho, q, fit):
     # plt.title(str(i))
     plt.show()
 
+
 def plot_cong_bins(rho, q):
     plt.scatter(rho, q, marker='s', s=5, c='purple')
     #plt.show()
+
+
+def plot_test_data(data, n_segments, fits):
+    for i in range(n_segments):
+        fit = fits[i]
+        col_rho = "density_{}".format(i)
+        col_q = "flow_{}".format(i)
+        plt.scatter(data[col_rho], data[col_q])
+
+        rho_fit = [0, fit['rho_crit']]
+        q_fit = [fit['freeflow_fit'][1], fit['flow_cap']]
+        if fit['cong_fit'] is not None:
+            rho_fit.append(-fit['cong_fit'][1] / fit['cong_fit'][0])
+            q_fit.append(0)
+        plt.plot(rho_fit, q_fit)
+        plt.show()

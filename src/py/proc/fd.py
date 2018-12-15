@@ -4,7 +4,7 @@ import pandas as pd
 import vis.fd
 
 
-def calc_flows(data):
+def calc_flows(data, n_segments):
     densities = data.filter(regex="density_")
     speeds = data.filter(regex="speed_")
     n_segments = len(speeds.columns)
@@ -70,11 +70,12 @@ def calc_cong_speed_param(data, rho_crit, q_crit):
 def fit_fds(fnames):
     data = pd.concat((pd.read_csv(fname) for fname in fnames))
     data.reset_index(drop=True, inplace=True)
-    flows = calc_flows(data)
+    n_segments = len(data.filter(regex="speed_").columns)
+    flows = calc_flows(data, n_segments)
     data = pd.concat([data, flows], axis=1)
     speed_thresh = 25
     fits = []
-    for i in range(6):
+    for i in range(n_segments):
         cur_data = pd.DataFrame({'speed': data['speed_{}'.format(i)],
                                  'density': data['density_{}'.format(i)],
                                  'flow': data['flow_{}'.format(i)]})
@@ -111,8 +112,10 @@ def estimate_flow(density, fd_fit):
 def test_fd(fnames, fits):
     data = pd.concat((pd.read_csv(fname) for fname in fnames))
     data.reset_index(drop=True, inplace=True)
-    flows = calc_flows(data)
+    n_segments = len(data.filter(regex="speed_").columns)
+    flows = calc_flows(data, n_segments)
     data = pd.concat([data, flows], axis=1)
     for segment_num, fd_fit in enumerate(fits):
         new_col_name = 'flow_est_{}'.format(segment_num)
         data[new_col_name] = estimate_flow(data["density_{}".format(segment_num)], fd_fit)
+    vis.fd.plot_test_data(data, n_segments, fits)
