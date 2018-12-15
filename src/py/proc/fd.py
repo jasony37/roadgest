@@ -67,12 +67,13 @@ def calc_cong_speed_param(data, rho_crit, q_crit):
     return fit_cong(bin_densities, bin_flows, (rho_crit, q_crit))
 
 
-def fit_fd(fnames):
+def fit_fds(fnames):
     data = pd.concat((pd.read_csv(fname) for fname in fnames))
     data.reset_index(drop=True, inplace=True)
     flows = calc_flows(data)
     data = pd.concat([data, flows], axis=1)
     speed_thresh = 25
+    fits = []
     for i in range(6):
         cur_data = pd.DataFrame({'speed': data['speed_{}'.format(i)],
                                  'density': data['density_{}'.format(i)],
@@ -91,4 +92,27 @@ def fit_fd(fnames):
             fit_data['cong_fit'] = calc_cong_speed_param(cur_data, rho_crit, fit_data['flow_cap'])
         except np.linalg.LinAlgError:
             fit_data['cong_fit'] = None
-        vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data)
+        fits.append(fit_data)
+        # vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data)
+    return fits
+
+
+def estimate_flow(density, fd_fit):
+    flow_est = np.empty(len(density))
+    freeflow_filt = density <= fd_fit['rho_crit']
+    if np.any(freeflow_filt):
+        flow_est[freeflow_filt] = density[freeflow_filt] * fd_fit['freeflow_fit'][0] + fd_fit['freeflow_fit'][1]
+    cong_filt = np.invert(freeflow_filt)
+    if np.any(cong_filt):
+        flow_est[cong_filt] = density[cong_filt] * fd_fit['cong_fit'][0] + fd_fit['cong_fit'][1]
+    return flow_est
+
+
+def test_fd(fnames, fits):
+    data = pd.concat((pd.read_csv(fname) for fname in fnames))
+    data.reset_index(drop=True, inplace=True)
+    flows = calc_flows(data)
+    data = pd.concat([data, flows], axis=1)
+    for segment_num, fd_fit in enumerate(fits):
+        new_col_name = 'flow_est_{}'.format(segment_num)
+        data[new_col_name] = estimate_flow(data["density_{}".format(segment_num)], fd_fit)
