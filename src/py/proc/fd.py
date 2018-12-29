@@ -52,19 +52,19 @@ def fit_cong(density, flow, crit_pt):
     fit = np.linalg.lstsq(density_shifted[:, np.newaxis], flow_shifted, rcond=None)
     fit = fit[0]
     fit = np.append(fit, -fit[0] * crit_pt[0] + crit_pt[1])
-    vis.fd.plot_cong_bins(density, flow)
+    # vis.fd.plot_cong_bins(density, flow)
     return fit
 
 
-def calc_cong_speed_param(data, rho_crit, q_crit):
+def calc_cong_bins(data, rho_crit, q_crit):
     filt = np.logical_and(data['flow'] <= q_crit, data['density'] > rho_crit)
     data_cong = data[filt].sort_values('density')
     idxs = data_cong.index
-    data_cong['bin'] =  pd.Series(np.arange(len(data_cong)) // 10 + 1, index=idxs)
+    data_cong['bin'] = pd.Series(np.arange(len(data_cong)) // 10 + 1, index=idxs)
     grouped_bins = data_cong.groupby('bin')
     bin_densities = grouped_bins['density'].mean()
     bin_flows = grouped_bins['flow'].agg(calc_bin_flow)
-    return fit_cong(bin_densities, bin_flows, (rho_crit, q_crit))
+    return bin_densities, bin_flows
 
 
 def fit_fds(fnames):
@@ -90,11 +90,13 @@ def fit_fds(fnames):
         rho_crit = density_at_flow_cap(fit_data['freeflow_fit'], fit_data['flow_cap'])
         fit_data['rho_crit'] = rho_crit
         try:
-            fit_data['cong_fit'] = calc_cong_speed_param(cur_data, rho_crit, fit_data['flow_cap'])
+            cong_bin_densities, cong_bin_flows = calc_cong_bins(cur_data, rho_crit, fit_data['flow_cap'])
+            fit_data['cong_fit'] = fit_cong(cong_bin_densities, cong_bin_flows, (rho_crit, fit_data['flow_cap']))
         except np.linalg.LinAlgError:
             fit_data['cong_fit'] = None
         fits.append(fit_data)
-        # vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data)
+        plot_title = "Segment {} training set".format(i + 1)
+        # vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data, plot_title)
     return fits
 
 
@@ -117,5 +119,11 @@ def test_fd(fnames, fits):
     data = pd.concat([data, flows], axis=1)
     for segment_num, fd_fit in enumerate(fits):
         new_col_name = 'flow_est_{}'.format(segment_num)
-        data[new_col_name] = estimate_flow(data["density_{}".format(segment_num)], fd_fit)
-    vis.fd.plot_test_data(data, n_segments, fits)
+        density_col_name = "density_{}".format(segment_num)
+        flow_col_name = "flow_{}".format(segment_num)
+        data[new_col_name] = estimate_flow(data[density_col_name], fd_fit)
+        cur_data = pd.DataFrame({'density': data[density_col_name],
+                                 'flow': data[flow_col_name]})
+        cong_bins_rho, cong_bins_q = calc_cong_bins(cur_data, fd_fit['rho_crit'], fd_fit['flow_cap'])
+        title = 'Segment {} validation set'.format(segment_num + 1)
+        vis.fd.plot_test_data(cur_data, fd_fit, cong_bins_rho, cong_bins_q, title)
