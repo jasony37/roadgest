@@ -96,7 +96,13 @@ def fit_fds(fnames):
             fit_data['cong_fit'] = None
         fits.append(fit_data)
         plot_title = "Segment {} training set".format(i + 1)
-        # vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data, plot_title)
+        segment_info = "Segment {}: v_free={:.2f} | C_f={:.2f}".format(i+1,
+                                                                       fit_data['freeflow_fit'][0],
+                                                                       fit_data['flow_cap'])
+        if fit_data['cong_fit'] is not None:
+            segment_info += " | v_cong={:.2f}".format(fit_data['cong_fit'][0])
+        print(segment_info)
+        vis.fd.plot_fd(cur_data['density'], cur_data['flow'], fit_data, plot_title)
     return fits
 
 
@@ -109,6 +115,16 @@ def estimate_flow(density, fd_fit):
     if np.any(cong_filt):
         flow_est[cong_filt] = density[cong_filt] * fd_fit['cong_fit'][0] + fd_fit['cong_fit'][1]
     return flow_est
+
+
+def calc_rmse(pred, val):
+    n = len(pred)
+    assert(n == len(val))
+    if n > 0:
+        mse = np.sum(np.subtract(pred, val) ** 2) / n
+        return np.sqrt(mse)
+    else:
+        return 0.0
 
 
 def test_fd(fnames, fits):
@@ -124,6 +140,14 @@ def test_fd(fnames, fits):
         data[new_col_name] = estimate_flow(data[density_col_name], fd_fit)
         cur_data = pd.DataFrame({'density': data[density_col_name],
                                  'flow': data[flow_col_name]})
-        cong_bins_rho, cong_bins_q = calc_cong_bins(cur_data, fd_fit['rho_crit'], fd_fit['flow_cap'])
+        free_filt = cur_data['density'] <= fd_fit['rho_crit']
+        rmse_free = calc_rmse(cur_data[free_filt]['flow'], data[free_filt][new_col_name])
+        info_str = 'Segment {}: rmse_free={:.3f}'.format(segment_num + 1, rmse_free)
+        if fd_fit['cong_fit'] is not None:
+            cong_bins_rho, cong_bins_q = calc_cong_bins(cur_data, fd_fit['rho_crit'], fd_fit['flow_cap'])
+            cong_bins_q_est = estimate_flow(cong_bins_rho, fd_fit)
+            rmse_cong = calc_rmse(cong_bins_q, cong_bins_q_est)
+            info_str += ' | rmse_cong={:.3f}'.format(rmse_cong)
+        print(info_str)
         title = 'Segment {} validation set'.format(segment_num + 1)
         vis.fd.plot_test_data(cur_data, fd_fit, cong_bins_rho, cong_bins_q, title)
